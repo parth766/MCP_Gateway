@@ -6,9 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/start-local-dev.js",
-    "test": "node tests/e2e-definition-of-done.test.js",
-    "install:all": "npm install --prefix services/woocommerce-mcp && npm install --prefix services/currency-mcp && npm install --prefix services/analytics-mcp && npm install --prefix services/gateway && npm install --prefix services/dashboard",
-    "build:dashboard": "npm run build --prefix services/dashboard"
+    "test": "node scripts/test-all.js",
+    "test:suite": "node tests/e2e-definition-of-done.test.js",
+    "install:all": "npm.cmd install --prefix services/woocommerce-mcp && npm.cmd install --prefix services/currency-mcp && npm.cmd install --prefix services/analytics-mcp && npm.cmd install --prefix services/gateway && npm.cmd install --prefix services/dashboard",
+    "build:dashboard": "npm.cmd run build --prefix services/dashboard"
   },
   "keywords": [
     "mcp",
