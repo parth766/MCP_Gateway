@@ -1,0 +1,133 @@
+services:
+  # Database for WooCommerce
+  mariadb:
+    image: mariadb:11.4
+    container_name: mcp-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_123
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: bn_wordpress
+      MYSQL_PASSWORD: store_db_password_456
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - mcp-net
+
+  # Layer 1: WooCommerce Storefront & Admin
+  wordpress:
+    image: wordpress:6.7-apache
+    container_name: mcp-wordpress
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_USER: bn_wordpress
+      WORDPRESS_DB_PASSWORD: store_db_password_456
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+    ports:
+      - "8080:80"
+    networks:
+      - mcp-net
+
+  # Layer 2: Custom WooCommerce Streamable HTTP MCP Server
+  woocommerce-mcp:
+    build:
+      context: ./services/woocommerce-mcp
+      dockerfile: Dockerfile
+    container_name: mcp-woocommerce-server
+    restart: unless-stopped
+    environment:
+      PORT: 4001
+      WOOCOMMERCE_URL: http://wordpress:80
+      WC_CONSUMER_KEY: ck_urumi_store_key_987654
+      WC_CONSUMER_SECRET: cs_urumi_store_secret_123456
+      WC_MOCK_FALLBACK: "true"
+    ports:
+      - "4001:4001"
+    networks:
+      - mcp-net
+
+  # Upstream Server 2: Currency Exchange MCP
+  currency-mcp:
+    build:
+      context: ./services/currency-mcp
+      dockerfile: Dockerfile
+    container_name: mcp-currency-server
+    restart: unless-stopped
+    environment:
+      PORT: 4002
+      REQUIRE_AUTH: "true"
+      AUTH_BEARER_TOKEN: currency_secret_token_123
+    ports:
+      - "4002:4002"
+    networks:
+      - mcp-net
+
+  # Upstream Server 3: Store Analytics MCP
+  analytics-mcp:
+    build:
+      context: ./services/analytics-mcp
+      dockerfile: Dockerfile
+    container_name: mcp-analytics-server
+    restart: unless-stopped
+    environment:
+      PORT: 4003
+      REQUIRE_AUTH: "true"
+      AUTH_API_KEY: analytics_secret_key_456
+    ports:
+      - "4003:4003"
+    networks:
+      - mcp-net
+
+  # Layer 3: Team MCP Gateway Backend
+  gateway-backend:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: mcp-gateway-backend
+    restart: unless-stopped
+    depends_on:
+      - woocommerce-mcp
+      - currency-mcp
+      - analytics-mcp
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      GATEWAY_ENCRYPTION_KEY: urumi-aes-256-master-key-must-be-32-bytes!
+      WOOCOMMERCE_MCP_URL: http://woocommerce-mcp:4001/sse
+      CURRENCY_MCP_URL: http://currency-mcp:4002/sse
+      ANALYTICS_MCP_URL: http://analytics-mcp:4003/sse
+    volumes:
+      - gateway_data:/app/data
+    ports:
+      - "3000:3000"
+    networks:
+      - mcp-net
+
+  # Layer 3 & 4: React Dashboard Frontend
+  dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: mcp-dashboard
+    restart: unless-stopped
+    depends_on:
+      - gateway-backend
+    ports:
+      - "80:80"
+    networks:
+      - mcp-net
+
+networks:
+  mcp-net:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+  wordpress_data:
+  gateway_data:

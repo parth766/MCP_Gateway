@@ -1,0 +1,89 @@
+{{- if .Values.networkPolicies.enabled }}
+# 1. Isolation: WooCommerce MCP is strictly reachable ONLY by the Gateway Backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-wc-mcp-isolation
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: woocommerce-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway-backend
+      ports:
+        - protocol: TCP
+          port: 4001
+---
+# 2. Isolation: MariaDB is strictly reachable ONLY by WordPress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-mariadb-isolation
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mariadb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: wordpress
+      ports:
+        - protocol: TCP
+          port: 3306
+---
+# 3. Isolation: Upstream Currency MCP is strictly reachable ONLY by the Gateway Backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-currency-mcp-isolation
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: currency-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway-backend
+      ports:
+        - protocol: TCP
+          port: 4002
+---
+# 4. Isolation: Upstream Analytics MCP is strictly reachable ONLY by the Gateway Backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-analytics-mcp-isolation
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: analytics-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway-backend
+      ports:
+        - protocol: TCP
+          port: 4003
+{{- end }}

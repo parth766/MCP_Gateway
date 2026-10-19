@@ -1,0 +1,110 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-gateway-data-pvc
+  labels:
+    app.kubernetes.io/name: gateway-backend
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.gateway.persistence.accessMode }}
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.gateway.persistence.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-gateway-backend
+  labels:
+    app.kubernetes.io/name: gateway-backend
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway-backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gateway-backend
+        {{- include "mcp-gateway.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: gateway-backend
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: "production"
+            - name: DATA_DIR
+              value: "/app/data"
+            - name: GATEWAY_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mcp-gateway.fullname" . }}-secrets
+                  key: gateway-encryption-key
+            - name: WOOCOMMERCE_MCP_URL
+              value: "http://woocommerce-mcp:4001/sse"
+            - name: CURRENCY_MCP_URL
+              value: "http://currency-mcp:4002/sse"
+            - name: ANALYTICS_MCP_URL
+              value: "http://analytics-mcp:4003/sse"
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mcp-gateway.fullname" . }}-secrets
+                  key: llm-api-key
+          ports:
+            - name: http
+              containerPort: 3000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "mcp-gateway.fullname" . }}-gateway-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-backend
+  labels:
+    app.kubernetes.io/name: gateway-backend
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+  selector:
+    app.kubernetes.io/name: gateway-backend
+{{- end }}

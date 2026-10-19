@@ -1,0 +1,23 @@
+{
+  "name": "mcp-gateway-platform",
+  "version": "1.0.0",
+  "description": "WooCommerce Hosting Platform with Team Model Context Protocol (MCP) Gateway on Kubernetes",
+  "main": "scripts/start-local-dev.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/start-local-dev.js",
+    "test": "node tests/e2e-definition-of-done.test.js",
+    "install:all": "npm install --prefix services/woocommerce-mcp && npm install --prefix services/currency-mcp && npm install --prefix services/analytics-mcp && npm install --prefix services/gateway && npm install --prefix services/dashboard",
+    "build:dashboard": "npm run build --prefix services/dashboard"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "woocommerce",
+    "kubernetes",
+    "helm",
+    "ai-agent"
+  ],
+  "author": "Urumi AI Platform",
+  "license": "MIT"
+}

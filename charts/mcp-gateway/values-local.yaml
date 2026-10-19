@@ -1,0 +1,84 @@
+# Local Kubernetes Development Values (Kind, Minikube, k3d)
+global:
+  domain: "local.mcp-gateway.nip.io"
+  storageClass: "standard"
+
+mariadb:
+  persistence:
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+
+wordpress:
+  persistence:
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 192Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+woocommerceMcp:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 150m
+      memory: 128Mi
+
+gateway:
+  replicaCount: 1
+  persistence:
+    size: 500Mi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 192Mi
+
+dashboard:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+  hosts:
+    - host: "local.mcp-gateway.nip.io"
+      paths:
+        - path: /store
+          pathType: Prefix
+          service: wordpress
+          port: 80
+        - path: /api
+          pathType: Prefix
+          service: gateway-backend
+          port: 3000
+        - path: /mcp
+          pathType: Prefix
+          service: gateway-backend
+          port: 3000
+        - path: /
+          pathType: Prefix
+          service: dashboard
+          port: 80
+  tls: []

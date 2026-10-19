@@ -1,0 +1,189 @@
+# Base Helm values for mcp-gateway platform
+
+global:
+  domain: "local.mcp-gateway.nip.io"
+  storageClass: "" # uses cluster default storage class if empty
+
+# MariaDB Stateful Store Database
+mariadb:
+  enabled: true
+  image:
+    repository: mariadb
+    tag: "11.4"
+    pullPolicy: IfNotPresent
+  auth:
+    database: "wordpress"
+    username: "bn_wordpress"
+    password: "mariadb_secure_pass_123"
+    rootPassword: "mariadb_root_pass_456"
+  persistence:
+    enabled: true
+    size: 5Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# WordPress & WooCommerce Store
+wordpress:
+  enabled: true
+  image:
+    repository: wordpress
+    tag: "6.7-apache"
+    pullPolicy: IfNotPresent
+  auth:
+    adminUser: "storeadmin"
+    adminPassword: "StoreAdminSecurePass2026!"
+    adminEmail: "admin@example.com"
+  wcKeys:
+    consumerKey: "ck_urumi_store_key_987654"
+    consumerSecret: "cs_urumi_store_secret_123456"
+  persistence:
+    enabled: true
+    size: 5Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 800m
+      memory: 768Mi
+
+# Custom WooCommerce Streamable HTTP MCP Server (Layer 2)
+woocommerceMcp:
+  enabled: true
+  image:
+    repository: urumi/woocommerce-mcp
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 4001
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+# Upstream Server 2: Currency Exchange MCP
+currencyMcp:
+  enabled: true
+  image:
+    repository: urumi/currency-mcp
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 4002
+  authToken: "currency_secret_token_123"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Upstream Server 3: Store Analytics MCP
+analyticsMcp:
+  enabled: true
+  image:
+    repository: urumi/analytics-mcp
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 4003
+  apiKey: "analytics_secret_key_456"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Team MCP Gateway Backend (Layer 3)
+gateway:
+  enabled: true
+  image:
+    repository: urumi/mcp-gateway-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 3000
+  secrets:
+    encryptionKey: "urumi-aes-256-master-key-must-be-32-bytes!"
+    adminApiKey: "urumi_admin_key_12345"
+    memberApiKey: "urumi_member_key_67890"
+    llmApiKey: ""
+  persistence:
+    enabled: true
+    size: 1Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# React Dashboard Frontend (Layer 3 & 4)
+dashboard:
+  enabled: true
+  image:
+    repository: urumi/mcp-dashboard
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Kubernetes Ingress
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  hosts:
+    - host: "local.mcp-gateway.nip.io"
+      paths:
+        - path: /store
+          pathType: Prefix
+          service: wordpress
+          port: 80
+        - path: /api
+          pathType: Prefix
+          service: gateway-backend
+          port: 3000
+        - path: /mcp
+          pathType: Prefix
+          service: gateway-backend
+          port: 3000
+        - path: /
+          pathType: Prefix
+          service: dashboard
+          port: 80
+  tls: []
+
+# Zero-Trust Network Policies
+networkPolicies:
+  enabled: true
