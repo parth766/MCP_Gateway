@@ -2,9 +2,11 @@
   "name": "mcp-gateway-platform",
   "version": "1.0.0",
   "description": "WooCommerce Hosting Platform with Team Model Context Protocol (MCP) Gateway on Kubernetes",
-  "main": "scripts/start-local-dev.js",
+  "main": "scripts/start-all.js",
   "type": "module",
   "scripts": {
+    "start": "node scripts/start-all.js",
+    "live": "node scripts/start-all.js",
     "dev": "node scripts/start-local-dev.js",
     "test": "node scripts/test-all.js",
     "test:suite": "node tests/e2e-definition-of-done.test.js",
